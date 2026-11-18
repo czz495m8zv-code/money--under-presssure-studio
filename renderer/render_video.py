@@ -260,7 +260,7 @@ async def create_narration(text, voice, output_path):
 
 def media_duration(path, ffmpeg_exe):
     probe = subprocess.run(
-        [ffmpeg_exe, "-nostdin", "-hide_banner", "-v", "error", "-i", str(path), "-f", "null", "-"],
+        [ffmpeg_exe, "-nostdin", "-hide_banner", "-v", "info", "-i", str(path), "-f", "null", "-"],
         capture_output=True, text=True, check=False, timeout=30
     )
     import re
