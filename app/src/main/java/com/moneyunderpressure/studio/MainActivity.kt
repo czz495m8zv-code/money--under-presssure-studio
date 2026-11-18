@@ -4,16 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
@@ -22,9 +21,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val Ink = Color(0xFF080D1A)
 private val Panel = Color(0xFF111B30)
@@ -41,10 +44,16 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun StudioApp() {
+    val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var topic by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf("Dashboard") }
-    var notice by remember { mutableStateOf("Your production workspace is ready.") }
+    var notice by remember { mutableStateOf("Projects are saved on this phone.") }
+    val projects = remember {
+        mutableStateListOf<StudioProject>().apply {
+            addAll(ProjectStore.load(context))
+        }
+    }
 
     MaterialTheme(colorScheme = darkColorScheme(
         background = Ink, surface = Panel, primary = Cyan,
@@ -95,85 +104,135 @@ fun StudioApp() {
                         }
                     }
                 }
-                item {
-                    Column {
-                        Text("Make your next", color = Muted, fontSize = 15.sp)
-                        Text("big money story.", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
-                        Text("From an idea to a cinematic video.", color = Muted, fontSize = 14.sp)
-                    }
-                }
-                item {
-                    Card(
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = Panel),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.Add, null, tint = Cyan)
-                                Spacer(Modifier.width(8.dp))
-                                Text("CREATE A VIDEO", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                            }
-                            Text("VIDEO TITLE", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            StudioField(title, { title = it }, "e.g. Why Everyone Is in Debt")
-                            Text("VIDEO IDEA / TOPIC", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-                            StudioField(topic, { topic = it }, "Describe the story you want to tell")
-                            Button(
-                                onClick = {
-                                    notice = if (title.isBlank() || topic.isBlank()) {
-                                        "Add a title and topic to create your project."
-                                    } else {
-                                        "Draft project created: $title"
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth().height(52.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Icon(Icons.Default.AutoAwesome, null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("CREATE PROJECT", fontWeight = FontWeight.Bold)
-                            }
-                            Text(notice, color = if (notice.startsWith("Draft")) Cyan else Muted, fontSize = 12.sp)
+                if (selected == "Dashboard") {
+                    item {
+                        Column {
+                            Text("Make your next", color = Muted, fontSize = 15.sp)
+                            Text("big money story.", fontSize = 30.sp, fontWeight = FontWeight.ExtraBold)
+                            Text("From an idea to a cinematic video.", color = Muted, fontSize = 14.sp)
                         }
                     }
-                }
-                item {
-                    Text("PRODUCTION PIPELINE", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                        PipelineTile("01", "Script", "Story & research", Modifier.weight(1f))
-                        PipelineTile("02", "Visuals", "Motion design", Modifier.weight(1f))
-                        PipelineTile("03", "Render", "MP4 export", Modifier.weight(1f))
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(22.dp),
+                            colors = CardDefaults.cardColors(containerColor = Panel),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Default.Add, null, tint = Cyan)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("CREATE A VIDEO PROJECT", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                                }
+                                Text("VIDEO TITLE", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                StudioField(title, { title = it }, "e.g. Why Everyone Is in Debt")
+                                Text("VIDEO IDEA / TOPIC", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                StudioField(topic, { topic = it }, "Describe the story you want to tell")
+                                Button(
+                                    onClick = {
+                                        if (title.isBlank() || topic.isBlank()) {
+                                            notice = "Enter both a title and a topic first."
+                                        } else {
+                                            val project = StudioProject(
+                                                id = System.currentTimeMillis(),
+                                                title = title.trim(),
+                                                topic = topic.trim(),
+                                                createdAt = System.currentTimeMillis()
+                                            )
+                                            projects.add(0, project)
+                                            ProjectStore.save(context, projects)
+                                            notice = "Project saved on this phone."
+                                            title = ""
+                                            topic = ""
+                                            selected = "Projects"
+                                        }
+                                    },
+                                    modifier = Modifier.fillMaxWidth().height(52.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink),
+                                    shape = RoundedCornerShape(14.dp)
+                                ) {
+                                    Icon(Icons.Default.AutoAwesome, null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("SAVE VIDEO PROJECT", fontWeight = FontWeight.Bold)
+                                }
+                                Text(notice, color = Cyan, fontSize = 12.sp)
+                            }
+                        }
                     }
-                }
-                item {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFF151D38)),
-                        shape = RoundedCornerShape(18.dp)
-                    ) {
-                        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.PlayArrow, null, tint = Violet, modifier = Modifier.size(30.dp))
-                            Spacer(Modifier.width(12.dp))
-                            Column {
-                                Text("THE STUDIO VISION", fontWeight = FontWeight.Bold)
-                                Text("Cinematic 2D graphics • animated charts • kinetic typography",
+                    item {
+                        Text("PRODUCTION PIPELINE", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                            PipelineTile("01", "Script", "Story & research", Modifier.weight(1f))
+                            PipelineTile("02", "Visuals", "Motion design", Modifier.weight(1f))
+                            PipelineTile("03", "Render", "MP4 export", Modifier.weight(1f))
+                        }
+                    }
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151D38)),
+                            shape = RoundedCornerShape(18.dp)) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                Text("VIDEO FORMAT", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                                Text("YouTube landscape • 16:9 • 1080p target", fontWeight = FontWeight.SemiBold)
+                                Text("Visual identity: navy, cyan, violet, animated charts and kinetic type.",
                                     color = Muted, fontSize = 12.sp)
                             }
                         }
                     }
-                }
-                item {
-                    Text("BUILD STATUS", fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
-                    Text("Foundation UI • First development milestone", color = Muted, fontSize = 13.sp)
-                    LinearProgressIndicator(
-                        progress = { 0.15f },
-                        modifier = Modifier.fillMaxWidth().height(6.dp),
-                        color = Cyan,
-                        trackColor = Panel
-                    )
-                    Text("15% — Dashboard foundation", color = Cyan, fontSize = 12.sp)
+                } else if (selected == "Projects") {
+                    item {
+                        Text("YOUR PROJECTS", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("Saved locally on this device", color = Muted, fontSize = 13.sp)
+                    }
+                    if (projects.isEmpty()) {
+                        item {
+                            Card(colors = CardDefaults.cardColors(containerColor = Panel),
+                                shape = RoundedCornerShape(18.dp)) {
+                                Text("No projects yet. Create your first video from the Dashboard.",
+                                    Modifier.padding(18.dp), color = Muted)
+                            }
+                        }
+                    } else {
+                        items(projects, key = { it.id }) { project ->
+                            ProjectCard(project)
+                        }
+                    }
+                } else {
+                    item {
+                        Text("STUDIO SETTINGS", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
+                        Card(colors = CardDefaults.cardColors(containerColor = Panel),
+                            shape = RoundedCornerShape(18.dp)) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text("Production profile", fontWeight = FontWeight.Bold)
+                                Text("Channel: Money Under Pressure", color = Muted)
+                                Text("Look: cinematic premium motion graphics", color = Muted)
+                                Text("Palette: dark navy • cyan • purple", color = Muted)
+                                Text("Canvas: 16:9 landscape", color = Muted)
+                            }
+                        }
+                        Text("Rendering and MP4 export are the next engineering milestone.",
+                            color = Cyan, fontSize = 13.sp)
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ProjectCard(project: StudioProject) {
+    val date = remember(project.createdAt) {
+        SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(project.createdAt))
+    }
+    Card(colors = CardDefaults.cardColors(containerColor = Panel),
+        shape = RoundedCornerShape(17.dp), modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Movie, null, tint = Cyan)
+                Spacer(Modifier.width(9.dp))
+                Text(project.title, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            }
+            Text(project.topic, color = Muted, fontSize = 13.sp)
+            Text("CREATED $date  •  DRAFT", color = Violet, fontSize = 10.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
