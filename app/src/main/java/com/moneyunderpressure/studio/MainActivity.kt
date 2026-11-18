@@ -191,7 +191,8 @@ fun StudioApp() {
                             shape = RoundedCornerShape(18.dp)) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                                 Text("VIDEO FORMAT", color = Cyan, fontWeight = FontWeight.Bold, fontSize = 11.sp)
-                                Text("YouTube landscape • 16:9 • 1080p target", fontWeight = FontWeight.SemiBold)
+                                Text("Long video: 16:9 landscape", fontWeight = FontWeight.SemiBold)
+                                Text("Auto-create 4 vertical 9:16 Shorts from every narration script", fontWeight = FontWeight.SemiBold, color = Cyan)
                                 Text("Visual identity: navy, cyan, violet, animated charts and kinetic type.",
                                     color = Muted, fontSize = 12.sp)
                             }
