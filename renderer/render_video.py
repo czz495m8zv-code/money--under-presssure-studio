@@ -224,8 +224,36 @@ def render_frame(config, frame_index):
 
 
 async def create_narration(text, voice, output_path):
-    communicate = edge_tts.Communicate(text=text, voice=voice)
-    await communicate.save(str(output_path))
+    # Prefer the natural neural voice, but never let a third-party TTS outage
+    # prevent a video from rendering. Fall back to local offline speech.
+    neural_path = output_path.with_suffix(".mp3")
+    try:
+        communicate = edge_tts.Communicate(text=text, voice=voice)
+        await communicate.save(str(neural_path))
+        if neural_path.is_file() and neural_path.stat().st_size > 1024:
+            print("Narration generated with neural voice.")
+            return neural_path
+        raise RuntimeError("Neural TTS returned an empty audio file.")
+    except Exception as exc:
+        neural_path.unlink(missing_ok=True)
+        print(f"Neural TTS unavailable ({type(exc).__name__}); using offline fallback.")
+        text_path = output_path.with_suffix(".txt")
+        text_path.write_text(text, encoding="utf-8")
+        try:
+            result = subprocess.run(
+                ["espeak-ng", "-v", "en-us", "-s", "155", "-f",
+                 str(text_path), "-w", str(output_path.with_suffix(".wav"))],
+                capture_output=True, text=True, check=False
+            )
+            if result.returncode != 0:
+                raise RuntimeError("Offline speech engine failed: " + (result.stderr or result.stdout)[-1200:])
+            wav_path = output_path.with_suffix(".wav")
+            if not wav_path.is_file() or wav_path.stat().st_size <= 1024:
+                raise RuntimeError("Offline speech engine produced no audio.")
+            print("Narration generated with offline English fallback voice.")
+            return wav_path
+        finally:
+            text_path.unlink(missing_ok=True)
 
 
 def media_duration(path, ffmpeg_exe):
@@ -255,14 +283,14 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     script = str(config.get("script", "")).strip()
     narration_enabled = bool(config.get("narration_enabled", True)) and bool(script)
-    audio_path = output_path.with_suffix(".narration.mp3")
+    audio_base_path = output_path.with_suffix(".narration")
     silent_path = output_path.with_name(output_path.stem + ".silent.mp4")
     ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
 
     if narration_enabled:
         voice = str(config.get("voice", "en-US-AriaNeural"))
         print(f"Generating narration with voice {voice}")
-        asyncio.run(create_narration(script, voice, audio_path))
+        audio_path = asyncio.run(create_narration(script, voice, audio_base_path))
         audio_seconds = media_duration(audio_path, ffmpeg_exe)
         config["duration_seconds"] = min(900, max(float(config.get("duration_seconds", 12)), audio_seconds + 0.8))
         if audio_seconds + 0.8 > 900:
