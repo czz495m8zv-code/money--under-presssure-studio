@@ -1,0 +1,28 @@
+{
+  "title": "NARRATION PIPELINE TEST",
+  "subtitle": "Automated voice and MP4 integration test",
+  "channel": "MONEY UNDER PRESSURE",
+  "duration_seconds": 12,
+  "fps": 24,
+  "width": 640,
+  "height": 360,
+  "narration_enabled": true,
+  "voice": "en-US-AriaNeural",
+  "script": "This is an automated narration test for Money Under Pressure Studio. We are checking voice generation, video rendering, and audio synchronization before releasing an update.",
+  "scenes": [
+    {
+      "title": "NARRATION TEST",
+      "subtitle": "Voice generation and MP4 output",
+      "chart": [
+        {
+          "label": "VOICE",
+          "value": 70
+        },
+        {
+          "label": "VIDEO",
+          "value": 90
+        }
+      ]
+    }
+  ]
+}
