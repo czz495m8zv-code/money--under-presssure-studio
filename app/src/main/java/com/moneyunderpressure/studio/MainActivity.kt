@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material3.*
@@ -23,11 +24,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 private val Ink = Color(0xFF080D1A)
 private val Panel = Color(0xFF111B30)
@@ -49,6 +52,10 @@ fun StudioApp() {
     var topic by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf("Dashboard") }
     var notice by remember { mutableStateOf("Projects are saved on this phone.") }
+    var serverUrl by remember { mutableStateOf(StudioSettings.baseUrl(context)) }
+    var tokenInput by remember { mutableStateOf("") }
+    var renderNotice by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
     val projects = remember {
         mutableStateListOf<StudioProject>().apply {
             addAll(ProjectStore.load(context))
@@ -193,7 +200,26 @@ fun StudioApp() {
                         }
                     } else {
                         items(projects, key = { it.id }) { project ->
-                            ProjectCard(project)
+                            ProjectCard(project) {
+                                scope.launch {
+                                    renderNotice = "Preparing " + project.title
+                                    try {
+                                        renderNotice = RenderApi.renderProject(context, project) { status ->
+                                            renderNotice = status
+                                        }
+                                    } catch (error: Exception) {
+                                        renderNotice = error.message ?: "Render failed."
+                                    }
+                                }
+                            }
+                        }
+                        if (renderNotice.isNotBlank()) {
+                            item {
+                                Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF151D38)),
+                                    shape = RoundedCornerShape(16.dp)) {
+                                    Text(renderNotice, Modifier.padding(16.dp), color = Cyan, fontSize = 13.sp)
+                                }
+                            }
                         }
                     }
                 } else {
@@ -201,15 +227,47 @@ fun StudioApp() {
                         Text("STUDIO SETTINGS", fontSize = 26.sp, fontWeight = FontWeight.ExtraBold)
                         Card(colors = CardDefaults.cardColors(containerColor = Panel),
                             shape = RoundedCornerShape(18.dp)) {
-                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Production profile", fontWeight = FontWeight.Bold)
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("RENDER SERVER CONNECTION", fontWeight = FontWeight.Bold, color = Cyan)
+                                Text("Paste your private HTTPS render-server address here after the server is deployed.",
+                                    color = Muted, fontSize = 12.sp)
+                                StudioField(serverUrl, { serverUrl = it }, "https://your-render-server.onrender.com")
+                                OutlinedTextField(
+                                    value = tokenInput,
+                                    onValueChange = { tokenInput = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    label = { Text("Render API token") },
+                                    placeholder = { Text("Leave blank to keep saved token") },
+                                    singleLine = true,
+                                    visualTransformation = PasswordVisualTransformation()
+                                )
+                                Button(
+                                    onClick = {
+                                        StudioSettings.saveBaseUrl(context, serverUrl)
+                                        val tokenSaved = tokenInput.isBlank() || StudioSettings.saveToken(context, tokenInput)
+                                        tokenInput = ""
+                                        notice = if (tokenSaved) "Connection settings saved securely on this phone."
+                                            else "Could not secure the API token on this device."
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink)
+                                ) { Text("SAVE CONNECTION", fontWeight = FontWeight.Bold) }
+                                Text(if (StudioSettings.hasToken(context)) "API token: saved encrypted on this phone"
+                                    else "API token: not configured", color = Muted, fontSize = 11.sp)
+                                Text(notice, color = Cyan, fontSize = 12.sp)
+                            }
+                        }
+                        Card(colors = CardDefaults.cardColors(containerColor = Panel),
+                            shape = RoundedCornerShape(18.dp)) {
+                            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text("PRODUCTION PROFILE", fontWeight = FontWeight.Bold)
                                 Text("Channel: Money Under Pressure", color = Muted)
                                 Text("Look: cinematic premium motion graphics", color = Muted)
                                 Text("Palette: dark navy • cyan • purple", color = Muted)
                                 Text("Canvas: 16:9 landscape", color = Muted)
                             }
                         }
-                        Text("Rendering and MP4 export are the next engineering milestone.",
+                        Text("Once the render server is deployed and connected, use Render MP4 on a saved project.",
                             color = Cyan, fontSize = 13.sp)
                     }
                 }
@@ -219,7 +277,7 @@ fun StudioApp() {
 }
 
 @Composable
-private fun ProjectCard(project: StudioProject) {
+private fun ProjectCard(project: StudioProject, onRender: () -> Unit) {
     val date = remember(project.createdAt) {
         SimpleDateFormat("dd MMM yyyy, HH:mm", Locale.getDefault()).format(Date(project.createdAt))
     }
@@ -233,6 +291,15 @@ private fun ProjectCard(project: StudioProject) {
             }
             Text(project.topic, color = Muted, fontSize = 13.sp)
             Text("CREATED $date  •  DRAFT", color = Violet, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Button(
+                onClick = onRender,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = Cyan, contentColor = Ink)
+            ) {
+                Icon(Icons.Default.PlayArrow, null)
+                Spacer(Modifier.width(8.dp))
+                Text("RENDER MP4", fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
