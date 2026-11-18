@@ -51,8 +51,11 @@ def script_to_scenes(script: str) -> list[dict[str, Any]]:
     # Turn script paragraphs/sentences into readable visual beats.
     if not script.strip():
         return []
-    beats = [part.strip() for part in re.split(r"(?<=[.!?])\s+|\n+", script) if part.strip()]
-    beats = beats[:20]
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\\s+|\\n+", script) if part.strip()]
+    if not sentences:
+        return []
+    group_size = max(1, (len(sentences) + 19) // 20)
+    beats = [" ".join(sentences[i:i + group_size]) for i in range(0, len(sentences), group_size)][:20]
     scenes = []
     for index, beat in enumerate(beats):
         words = beat.split()
