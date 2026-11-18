@@ -45,18 +45,20 @@ object StudioSettings {
         false
     }
 
-    fun token(context: Context): String? = try {
-        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val iv = prefs.getString("token_iv", null) ?: return null
-        val encrypted = prefs.getString("token_cipher", null) ?: return null
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(
-            Cipher.DECRYPT_MODE, getOrCreateKey(),
-            GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP))
-        )
-        String(cipher.doFinal(Base64.decode(encrypted, Base64.NO_WRAP)), Charsets.UTF_8)
-    } catch (_: Exception) {
-        null
+    fun token(context: Context): String? {
+        return try {
+            val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            val iv = prefs.getString("token_iv", null) ?: return null
+            val encrypted = prefs.getString("token_cipher", null) ?: return null
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(
+                Cipher.DECRYPT_MODE, getOrCreateKey(),
+                GCMParameterSpec(128, Base64.decode(iv, Base64.NO_WRAP))
+            )
+            String(cipher.doFinal(Base64.decode(encrypted, Base64.NO_WRAP)), Charsets.UTF_8)
+        } catch (_: Exception) {
+            null
+        }
     }
 
     private fun getOrCreateKey(): SecretKey {
