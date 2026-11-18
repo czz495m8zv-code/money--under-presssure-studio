@@ -1,5 +1,8 @@
 import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 os.environ["STUDIO_API_TOKEN"] = "test-token"
@@ -76,6 +79,46 @@ class RenderApiTests(unittest.TestCase):
         shorts = split_script_for_shorts(" ".join([sentence] * 20), 4)
         self.assertEqual(len(shorts), 4)
         self.assertTrue(all(len(short.split()) <= 330 for short in shorts))
+
+
+    def test_render_job_creates_four_short_files_and_download_routes(self):
+        from renderer import api
+
+        script = " ".join(
+            [f"Point {i} explains an important money issue." for i in range(1, 13)]
+        )
+        with tempfile.TemporaryDirectory() as folder:
+            output_dir = Path(folder)
+            job_id = "shorts-integration-test"
+            api.jobs[job_id] = {"id": job_id, "status": "queued"}
+
+            def fake_renderer(project_path, output_path, timeout):
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_bytes(b"test-mp4-content")
+
+            with patch.object(api, "OUTPUT_DIR", output_dir), patch(
+                "renderer.api.run_renderer", side_effect=fake_renderer
+            ):
+                api.render_job(job_id, {
+                    "title": "Test finance story",
+                    "duration_seconds": 5,
+                    "fps": 24,
+                    "script": script,
+                    "narration_enabled": False,
+                })
+
+                job = api.jobs[job_id]
+                self.assertEqual(job["status"], "completed")
+                self.assertEqual(len(job["shorts"]), 4)
+                for index in range(1, 5):
+                    response = self.client.get(
+                        f"/v1/renders/{job_id}/shorts/{index}/download",
+                        headers=self.headers,
+                    )
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.content, b"test-mp4-content")
+
+            api.jobs.pop(job_id, None)
 
     def test_vertical_short_frame_is_9_by_16(self):
         from renderer.render_video import render_vertical_frame
