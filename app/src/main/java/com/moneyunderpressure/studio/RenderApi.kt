@@ -55,7 +55,14 @@ object RenderApi {
                             append("\n\n").append(saved.size).append(" vertical Shorts saved:")
                             saved.forEach { append("\n").append(it) }
                         } else {
-                            append("\nShorts were not available for this project.")
+                            append("\nNo vertical Shorts were returned by the renderer.")
+                        }
+                        val shortsError = statusData.optString("shorts_error")
+                        if (shortsError.isNotBlank()) {
+                            append("\n\nShorts warning: ").append(shortsError)
+                        }
+                        if (saved.size < 4 && shortsError.isBlank()) {
+                            append("\n\nOnly ").append(saved.size).append(" of 4 expected Shorts were returned.")
                         }
                     }
                 }
