@@ -5,7 +5,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /studio
 COPY renderer/requirements.txt /studio/renderer/requirements.txt
-RUN pip install --no-cache-dir -r /studio/renderer/requirements.txt
+RUN apt-get update && apt-get install -y --no-install-recommends espeak-ng \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir -r /studio/renderer/requirements.txt
 COPY renderer /studio/renderer
 
 RUN mkdir -p /studio/output/jobs
