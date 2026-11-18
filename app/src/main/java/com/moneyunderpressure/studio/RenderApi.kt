@@ -59,7 +59,7 @@ object RenderApi {
                         }
                     }
                 }
-                "failed" -> throw IllegalStateException("The render server reported a failed job.")
+                "failed" -> throw IllegalStateException("Render failed: " + statusData.optString("error", "No error details were returned by the server."))
             }
         }
         throw IllegalStateException("Render is taking longer than expected. Check the project again later.")
