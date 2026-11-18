@@ -50,7 +50,7 @@ jobs:
           gradle --no-daemon assembleRelease
           rm -f app/release.keystore
       - name: Upload signed release APK
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        if: ${{ env.HAS_ANDROID_SIGNING_SECRETS == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: money-under-pressure-studio-release
