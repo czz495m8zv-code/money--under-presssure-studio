@@ -43,7 +43,7 @@ object RenderApi {
     private fun connection(url: String, token: String) =
         (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 20000
-            readTimeout = 120000
+            readTimeout = 1800000
             setRequestProperty("Authorization", "Bearer $token")
         }
 
