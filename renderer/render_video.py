@@ -35,9 +35,13 @@ def render_frame(config, frame_index):
     if scenes:
         scene_duration = duration / len(scenes)
         scene_index = min(len(scenes) - 1, int(t / scene_duration))
+        scene_start = scene_index * scene_duration
         scene = scenes[scene_index]
-        progress = min(1.0, max(0.0, (t - scene_index * scene_duration) / scene_duration))
+        local_t = max(0.0, t - scene_start)
+        progress = min(1.0, local_t / scene_duration)
     else:
+        scene_index = 0
+        local_t = t
         scene = config
         progress = min(1.0, t / duration)
 
@@ -78,12 +82,12 @@ def render_frame(config, frame_index):
               font=label_font, fill=(145, 169, 202, 220))
 
     # Kinetic title entrance.
-    title_alpha = int(255 * ease_out(t / 1.2))
-    title_y = 190 + int((1 - ease_out(t / 1.2)) * 38)
+    title_alpha = int(255 * ease_out(local_t / 0.85))
+    title_y = 190 + int((1 - ease_out(local_t / 0.85)) * 38)
     draw.text((74, title_y), title, font=title_font,
               fill=(245, 249, 255, title_alpha), stroke_width=1,
               stroke_fill=(53, 215, 242, min(90, title_alpha)))
-    subtitle_alpha = int(230 * ease_out((t - 0.45) / 1.0))
+    subtitle_alpha = int(230 * ease_out((local_t - 0.25) / 0.75))
     draw.text((78, title_y + 88), subtitle, font=subtitle_font,
               fill=(174, 193, 220, subtitle_alpha))
 
@@ -119,6 +123,12 @@ def render_frame(config, frame_index):
     scan_x = int((t * 110) % (width + 200)) - 100
     draw.line((scan_x, 120, scan_x + 110, height - 100),
               fill=(53, 215, 242, 24), width=3)
+
+    # Brief cinematic fade at each scene boundary prevents hard visual cuts.
+    if scenes and scene_index > 0 and local_t < 0.32:
+        fade_alpha = int(150 * (1.0 - ease_out(local_t / 0.32)))
+        fade = Image.new("RGBA", (width, height), (3, 8, 20, fade_alpha))
+        image = Image.alpha_composite(image.convert("RGBA"), fade).convert("RGB")
 
     return np.asarray(image, dtype=np.uint8)
 
