@@ -37,11 +37,13 @@ class RenderRequest(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     subtitle: str = Field(default="", max_length=180)
     channel: str = Field(default="MONEY UNDER PRESSURE", max_length=60)
-    duration_seconds: int = Field(default=12, ge=5, le=60)
+    duration_seconds: int = Field(default=12, ge=5, le=900)
     fps: int = Field(default=30, ge=24, le=30)
     chart: list[ChartPoint] = Field(default_factory=list, max_length=12)
     scenes: list[Scene] = Field(default_factory=list, max_length=20)
-    script: str = Field(default="", max_length=12000)
+    script: str = Field(default="", max_length=30000)
+    narration_enabled: bool = True
+    voice: str = Field(default="en-US-AriaNeural", max_length=80)
 
 
 
@@ -81,7 +83,7 @@ def render_job(job_id: str, payload: dict[str, Any]):
         subprocess.run(
             [sys.executable, str(ROOT / "renderer" / "render_video.py"),
              "--project", str(project_path), "--output", str(output_path)],
-            check=True, cwd=str(ROOT), timeout=900
+            check=True, cwd=str(ROOT), timeout=3600
         )
         with lock:
             jobs[job_id]["status"] = "completed"
@@ -103,6 +105,9 @@ def create_render(request: RenderRequest, background_tasks: BackgroundTasks,
     require_token(authorization)
     job_id = uuid.uuid4().hex
     payload = request.model_dump()
+    if payload["script"].strip() and payload["duration_seconds"] <= 12:
+        estimated = int(len(payload["script"].split()) / 2.35) + 3
+        payload["duration_seconds"] = min(900, max(12, estimated))
     if not payload["scenes"] and payload["script"].strip():
         payload["scenes"] = script_to_scenes(payload["script"])
     with lock:
