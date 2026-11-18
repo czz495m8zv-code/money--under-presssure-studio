@@ -316,9 +316,9 @@ def main():
         mux = subprocess.run(
             [ffmpeg_exe, "-y", "-i", str(silent_path), "-i", str(audio_path),
              "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
-             "-c:a", "aac", "-b:a", "192k", "-af", "apad", "-shortest",
+             "-c:a", "aac", "-b:a", "128k", "-threads", "2",
              "-movflags", "+faststart", str(output_path)],
-            capture_output=True, text=True, check=False, timeout=90
+            capture_output=True, text=True, check=False, timeout=180
         )
         if mux.returncode != 0:
             raise RuntimeError("Could not add narration to MP4: " + mux.stderr[-1200:])
