@@ -1,10 +1,13 @@
 import argparse
+import asyncio
+import subprocess
 import json
 import math
 import os
 from pathlib import Path
 
 import imageio_ffmpeg
+import edge_tts
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
@@ -133,6 +136,24 @@ def render_frame(config, frame_index):
     return np.asarray(image, dtype=np.uint8)
 
 
+async def create_narration(text, voice, output_path):
+    communicate = edge_tts.Communicate(text=text, voice=voice)
+    await communicate.save(str(output_path))
+
+
+def media_duration(path, ffmpeg_exe):
+    probe = subprocess.run(
+        [ffmpeg_exe, "-i", str(path), "-f", "null", "-"],
+        capture_output=True, text=True, check=False
+    )
+    import re
+    match = re.search(r"Duration: (\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", probe.stderr)
+    if not match:
+        raise RuntimeError("Could not determine generated narration duration.")
+    hours, minutes, seconds = match.groups()
+    return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Render a Money Under Pressure motion graphics video.")
     parser.add_argument("--project", default="renderer/sample_project.json")
@@ -143,11 +164,28 @@ def main():
     width = int(config.get("width", 1280))
     height = int(config.get("height", 720))
     fps = int(config.get("fps", 30))
-    frames = int(float(config.get("duration_seconds", 12)) * fps)
-    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+    output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    script = str(config.get("script", "")).strip()
+    narration_enabled = bool(config.get("narration_enabled", True)) and bool(script)
+    audio_path = output_path.with_suffix(".narration.mp3")
+    silent_path = output_path.with_name(output_path.stem + ".silent.mp4")
+    ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
 
+    if narration_enabled:
+        voice = str(config.get("voice", "en-US-AriaNeural"))
+        print(f"Generating narration with voice {voice}")
+        asyncio.run(create_narration(script, voice, audio_path))
+        audio_seconds = media_duration(audio_path, ffmpeg_exe)
+        config["duration_seconds"] = min(900, max(float(config.get("duration_seconds", 12)), audio_seconds + 0.8))
+        if audio_seconds + 0.8 > 900:
+            raise ValueError("Narration exceeds the 15-minute maximum. Shorten the script.")
+        print(f"Narration duration: {audio_seconds:.1f}s")
+
+    frames = int(float(config.get("duration_seconds", 12)) * fps)
+    video_target = str(silent_path if narration_enabled else output_path)
     writer = imageio_ffmpeg.write_frames(
-        args.output, (width, height), fps=fps, codec="libx264",
+        video_target, (width, height), fps=fps, codec="libx264",
         pix_fmt_out="yuv420p",
         output_params=["-crf", "20", "-preset", "ultrafast", "-movflags", "+faststart"]
     )
@@ -157,6 +195,18 @@ def main():
             writer.send(render_frame(config, index).tobytes())
     finally:
         writer.close()
+    if narration_enabled:
+        mux = subprocess.run(
+            [ffmpeg_exe, "-y", "-i", str(silent_path), "-i", str(audio_path),
+             "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
+             "-c:a", "aac", "-b:a", "192k", "-af", "apad", "-shortest",
+             "-movflags", "+faststart", str(output_path)],
+            capture_output=True, text=True, check=False
+        )
+        if mux.returncode != 0:
+            raise RuntimeError("Could not add narration to MP4: " + mux.stderr[-1200:])
+        silent_path.unlink(missing_ok=True)
+        audio_path.unlink(missing_ok=True)
     print(f"Rendered {frames} frames to {args.output}")
 
 
