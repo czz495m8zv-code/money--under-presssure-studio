@@ -70,6 +70,17 @@ class RenderApiTests(unittest.TestCase):
         self.assertIn("Point 12", shorts[-1])
         self.assertEqual(" ".join(shorts).split(), script.split())
 
+    def test_vertical_short_frame_is_9_by_16(self):
+        from renderer.render_video import render_vertical_frame
+        frame = render_vertical_frame({
+            "fps": 30,
+            "duration_seconds": 20,
+            "vertical": True,
+            "title": "A short money story",
+            "scenes": [{"title": "INFLATION", "subtitle": "Prices rise over time", "chart": []}]
+        }, 0)
+        self.assertEqual(frame.shape, (1280, 720, 3))
+
     def test_script_is_split_into_visual_scenes(self):
         from renderer.api import script_to_scenes
         scenes = script_to_scenes(
