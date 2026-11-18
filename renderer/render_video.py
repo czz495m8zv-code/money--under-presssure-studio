@@ -245,7 +245,7 @@ async def create_narration(text, voice, output_path):
             result = subprocess.run(
                 ["espeak-ng", "-v", "en-us", "-s", "155", "-f",
                  str(text_path), "-w", str(output_path.with_suffix(".wav"))],
-                capture_output=True, text=True, check=False
+                capture_output=True, text=True, check=False, timeout=30
             )
             if result.returncode != 0:
                 raise RuntimeError("Offline speech engine failed: " + (result.stderr or result.stdout)[-1200:])
@@ -260,8 +260,8 @@ async def create_narration(text, voice, output_path):
 
 def media_duration(path, ffmpeg_exe):
     probe = subprocess.run(
-        [ffmpeg_exe, "-i", str(path), "-f", "null", "-"],
-        capture_output=True, text=True, check=False
+        [ffmpeg_exe, "-nostdin", "-hide_banner", "-v", "error", "-i", str(path), "-f", "null", "-"],
+        capture_output=True, text=True, check=False, timeout=30
     )
     import re
     match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\.\d+)?)", probe.stderr)
@@ -291,13 +291,13 @@ def main():
 
     if narration_enabled:
         voice = str(config.get("voice", "en-US-AriaNeural"))
-        print(f"Generating narration with voice {voice}")
+        print(f"Generating narration with voice {voice}", flush=True)
         audio_path = asyncio.run(create_narration(script, voice, audio_base_path))
         audio_seconds = media_duration(audio_path, ffmpeg_exe)
         config["duration_seconds"] = min(900, max(float(config.get("duration_seconds", 12)), audio_seconds + 0.8))
         if audio_seconds + 0.8 > 900:
             raise ValueError("Narration exceeds the 15-minute maximum. Shorten the script.")
-        print(f"Narration duration: {audio_seconds:.1f}s")
+        print(f"Narration duration: {audio_seconds:.1f}s", flush=True)
 
     frames = int(float(config.get("duration_seconds", 12)) * fps)
     video_target = str(silent_path if narration_enabled else output_path)
@@ -318,13 +318,13 @@ def main():
              "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy",
              "-c:a", "aac", "-b:a", "192k", "-af", "apad", "-shortest",
              "-movflags", "+faststart", str(output_path)],
-            capture_output=True, text=True, check=False
+            capture_output=True, text=True, check=False, timeout=90
         )
         if mux.returncode != 0:
             raise RuntimeError("Could not add narration to MP4: " + mux.stderr[-1200:])
         silent_path.unlink(missing_ok=True)
         audio_path.unlink(missing_ok=True)
-    print(f"Rendered {frames} frames to {args.output}")
+    print(f"Rendered {frames} frames to {args.output}", flush=True)
 
 
 if __name__ == "__main__":
