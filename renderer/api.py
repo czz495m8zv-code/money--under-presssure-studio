@@ -76,6 +76,21 @@ def require_token(authorization: str | None):
         raise HTTPException(status_code=401, detail="A valid bearer token is required.")
 
 
+def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
+    words = script.split()
+    if not words:
+        return []
+    count = min(count, len(words))
+    base, extra = divmod(len(words), count)
+    chunks = []
+    offset = 0
+    for index in range(count):
+        size = base + (1 if index < extra else 0)
+        chunks.append(" ".join(words[offset:offset + size]))
+        offset += size
+    return chunks
+
+
 def render_job(job_id: str, payload: dict[str, Any]):
     project_path = OUTPUT_DIR / f"{job_id}.json"
     output_path = OUTPUT_DIR / f"{job_id}.mp4"
@@ -88,13 +103,52 @@ def render_job(job_id: str, payload: dict[str, Any]):
              "--project", str(project_path), "--output", str(output_path)],
             check=True, cwd=str(ROOT), timeout=3600
         )
+        shorts = []
+        script = str(payload.get("script", "")).strip()
+        if script:
+            with lock:
+                jobs[job_id]["status"] = "creating_shorts"
+            for index, short_script in enumerate(split_script_for_shorts(script, 4), start=1):
+                short_id = f"{job_id}-short-{index}"
+                short_project = OUTPUT_DIR / f"{short_id}.json"
+                short_output = OUTPUT_DIR / f"{short_id}.mp4"
+                short_title = " ".join(short_script.split()[:7]).strip(" .,!?:;") or f"Money Short {index}"
+                short_payload = {
+                    "title": short_title[:100],
+                    "subtitle": "A key moment from the full Money Under Pressure story",
+                    "channel": payload.get("channel", "MONEY UNDER PRESSURE"),
+                    "duration_seconds": 30,
+                    "fps": 30,
+                    "width": 720,
+                    "height": 1280,
+                    "vertical": True,
+                    "narration_enabled": bool(payload.get("narration_enabled", True)),
+                    "voice": payload.get("voice", "en-US-AriaNeural"),
+                    "script": short_script,
+                    "scenes": script_to_scenes(short_script)
+                }
+                short_project.write_text(json.dumps(short_payload, ensure_ascii=False), encoding="utf-8")
+                subprocess.run(
+                    [sys.executable, str(ROOT / "renderer" / "render_video.py"),
+                     "--project", str(short_project), "--output", str(short_output)],
+                    check=True, cwd=str(ROOT), timeout=900
+                )
+                shorts.append({"index": index, "filename": short_output.name, "title": short_title})
+                with lock:
+                    jobs[job_id]["shorts"] = list(shorts)
         with lock:
             jobs[job_id]["status"] = "completed"
             jobs[job_id]["download_path"] = str(output_path)
+            jobs[job_id]["shorts"] = shorts
     except Exception as exc:
         with lock:
-            jobs[job_id]["status"] = "failed"
-            jobs[job_id]["error"] = str(exc)[:500]
+            if output_path.is_file():
+                jobs[job_id]["status"] = "completed"
+                jobs[job_id]["download_path"] = str(output_path)
+                jobs[job_id]["shorts_error"] = str(exc)[:500]
+            else:
+                jobs[job_id]["status"] = "failed"
+                jobs[job_id]["error"] = str(exc)[:500]
 
 
 @app.get("/health")
@@ -127,6 +181,23 @@ def render_status(job_id: str, authorization: str | None = Header(default=None))
     if not job:
         raise HTTPException(status_code=404, detail="Render job not found.")
     return {key: value for key, value in job.items() if key != "download_path"}
+
+
+@app.get("/v1/renders/{job_id}/shorts/{short_index}/download")
+def download_short(job_id: str, short_index: int, authorization: str | None = Header(default=None)):
+    require_token(authorization)
+    with lock:
+        job = jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Render job not found.")
+    shorts = job.get("shorts", [])
+    match = next((item for item in shorts if item.get("index") == short_index), None)
+    if not match:
+        raise HTTPException(status_code=404, detail="This Short is not available.")
+    path = OUTPUT_DIR / match["filename"]
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Short video file is missing.")
+    return FileResponse(path, media_type="video/mp4", filename=f"money-under-pressure-short-{short_index}.mp4")
 
 
 @app.get("/v1/renders/{job_id}/download")
