@@ -77,9 +77,19 @@ def require_token(authorization: str | None):
 
 
 def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
-    words = script.split()
-    if not words:
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\\s+|\\n+", script) if part.strip()]
+    if not sentences:
         return []
+    if len(sentences) >= count:
+        base, extra = divmod(len(sentences), count)
+        chunks = []
+        offset = 0
+        for index in range(count):
+            size = base + (1 if index < extra else 0)
+            chunks.append(" ".join(sentences[offset:offset + size]))
+            offset += size
+        return chunks
+    words = script.split()
     count = min(count, len(words))
     base, extra = divmod(len(words), count)
     chunks = []
