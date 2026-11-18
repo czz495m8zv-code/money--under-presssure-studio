@@ -21,7 +21,8 @@ object ProjectStore {
                             id = item.optLong("id"),
                             title = item.optString("title"),
                             topic = item.optString("topic"),
-                            createdAt = item.optLong("createdAt")
+                            createdAt = item.optLong("createdAt"),
+                            script = item.optString("script")
                         )
                     )
                 }
@@ -40,6 +41,7 @@ object ProjectStore {
                     .put("title", project.title)
                     .put("topic", project.topic)
                     .put("createdAt", project.createdAt)
+                    .put("script", project.script)
             )
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
