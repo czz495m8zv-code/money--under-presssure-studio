@@ -31,7 +31,15 @@ def render_frame(config, frame_index):
     fps = int(config.get("fps", 30))
     duration = float(config.get("duration_seconds", 12))
     t = frame_index / fps
-    progress = min(1.0, t / duration)
+    scenes = config.get("scenes", [])
+    if scenes:
+        scene_duration = duration / len(scenes)
+        scene_index = min(len(scenes) - 1, int(t / scene_duration))
+        scene = scenes[scene_index]
+        progress = min(1.0, max(0.0, (t - scene_index * scene_duration) / scene_duration))
+    else:
+        scene = config
+        progress = min(1.0, t / duration)
 
     y = np.linspace(0, 1, height, dtype=np.float32)[:, None, None]
     top = np.array([7, 13, 29], dtype=np.float32)[None, None, :]
@@ -60,8 +68,8 @@ def render_frame(config, frame_index):
     number_font = load_font(22, True)
 
     channel = str(config.get("channel", "MONEY UNDER PRESSURE")).upper()
-    title = str(config.get("title", "THE BIG MONEY QUESTION")).upper()
-    subtitle = str(config.get("subtitle", "Follow the numbers. Understand the pressure."))
+    title = str(scene.get("title", config.get("title", "THE BIG MONEY QUESTION"))).upper()
+    subtitle = str(scene.get("subtitle", config.get("subtitle", "Follow the numbers. Understand the pressure.")))
 
     # Brand header.
     draw.rounded_rectangle((72, 58, 82, 84), radius=5, fill=(53, 215, 242, 255))
@@ -85,7 +93,7 @@ def render_frame(config, frame_index):
                            outline=(77, 116, 160, 95), width=2)
     draw.text((108, 430), "COST PRESSURE INDEX", font=label_font,
               fill=(145, 169, 202, 255))
-    chart = config.get("chart", [])
+    chart = scene.get("chart", config.get("chart", []))
     if chart:
         values = [float(item.get("value", 0)) for item in chart]
         labels = [str(item.get("label", "")) for item in chart]
