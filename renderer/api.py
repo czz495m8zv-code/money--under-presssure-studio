@@ -102,6 +102,22 @@ def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
     return chunks
 
 
+def run_renderer(project_path: Path, output_path: Path, timeout: int):
+    command = [
+        sys.executable, str(ROOT / "renderer" / "render_video.py"),
+        "--project", str(project_path), "--output", str(output_path)
+    ]
+    result = subprocess.run(
+        command, check=False, cwd=str(ROOT), timeout=timeout,
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "Renderer returned no diagnostic output.").strip()
+        raise RuntimeError(
+            f"Video renderer exited with code {result.returncode}: {details[-3500:]}"
+        )
+
+
 def render_job(job_id: str, payload: dict[str, Any]):
     project_path = OUTPUT_DIR / f"{job_id}.json"
     output_path = OUTPUT_DIR / f"{job_id}.mp4"
@@ -109,11 +125,7 @@ def render_job(job_id: str, payload: dict[str, Any]):
     with lock:
         jobs[job_id]["status"] = "rendering"
     try:
-        subprocess.run(
-            [sys.executable, str(ROOT / "renderer" / "render_video.py"),
-             "--project", str(project_path), "--output", str(output_path)],
-            check=True, cwd=str(ROOT), timeout=3600
-        )
+        run_renderer(project_path, output_path, 3600)
         shorts = []
         script = str(payload.get("script", "")).strip()
         if script:
@@ -139,11 +151,7 @@ def render_job(job_id: str, payload: dict[str, Any]):
                     "scenes": script_to_scenes(short_script)
                 }
                 short_project.write_text(json.dumps(short_payload, ensure_ascii=False), encoding="utf-8")
-                subprocess.run(
-                    [sys.executable, str(ROOT / "renderer" / "render_video.py"),
-                     "--project", str(short_project), "--output", str(short_output)],
-                    check=True, cwd=str(ROOT), timeout=900
-                )
+                run_renderer(short_project, short_output, 900)
                 shorts.append({"index": index, "filename": short_output.name, "title": short_title})
                 with lock:
                     jobs[job_id]["shorts"] = list(shorts)
@@ -156,7 +164,7 @@ def render_job(job_id: str, payload: dict[str, Any]):
             if output_path.is_file():
                 jobs[job_id]["status"] = "completed"
                 jobs[job_id]["download_path"] = str(output_path)
-                jobs[job_id]["shorts_error"] = str(exc)[:500]
+                jobs[job_id]["shorts_error"] = str(exc)[:1500]
             else:
                 jobs[job_id]["status"] = "failed"
                 jobs[job_id]["error"] = str(exc)[:500]
