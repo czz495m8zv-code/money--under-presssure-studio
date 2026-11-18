@@ -86,7 +86,8 @@ def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
         offset = 0
         for index in range(count):
             size = base + (1 if index < extra else 0)
-            chunks.append(" ".join(sentences[offset:offset + size]))
+            excerpt = " ".join(sentences[offset:offset + size]).split()[:330]
+            chunks.append(" ".join(excerpt))
             offset += size
         return chunks
     words = script.split()
@@ -96,7 +97,7 @@ def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
     offset = 0
     for index in range(count):
         size = base + (1 if index < extra else 0)
-        chunks.append(" ".join(words[offset:offset + size]))
+        chunks.append(" ".join(words[offset:offset + size][:330]))
         offset += size
     return chunks
 
