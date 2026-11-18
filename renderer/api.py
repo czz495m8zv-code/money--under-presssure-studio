@@ -30,7 +30,6 @@ class Scene(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     subtitle: str = Field(default="", max_length=180)
     chart: list[ChartPoint] = Field(default_factory=list, max_length=12)
-    scenes: list[Scene] = Field(default_factory=list, max_length=20)
 
 
 class RenderRequest(BaseModel):
@@ -40,6 +39,7 @@ class RenderRequest(BaseModel):
     duration_seconds: int = Field(default=12, ge=5, le=60)
     fps: int = Field(default=30, ge=24, le=30)
     chart: list[ChartPoint] = Field(default_factory=list, max_length=12)
+    scenes: list[Scene] = Field(default_factory=list, max_length=20)
 
 
 def require_token(authorization: str | None):
