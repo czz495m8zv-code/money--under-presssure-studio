@@ -64,6 +64,18 @@ class RenderApiTests(unittest.TestCase):
         self.assertIn("Inflation", scenes[0]["title"])
         self.assertIn("Families", scenes[1]["title"])
 
+    def test_accepts_long_form_duration(self):
+        from renderer.api import RenderRequest
+        request = RenderRequest(title="Long form", duration_seconds=900)
+        self.assertEqual(request.duration_seconds, 900)
+
+    def test_rejects_duration_over_fifteen_minutes(self):
+        response = self.client.post(
+            "/v1/renders", headers=self.headers,
+            json={"title": "Too long", "duration_seconds": 901}
+        )
+        self.assertEqual(response.status_code, 422)
+
     def test_rejects_invalid_duration(self):
         response = self.client.post(
             "/v1/renders",
