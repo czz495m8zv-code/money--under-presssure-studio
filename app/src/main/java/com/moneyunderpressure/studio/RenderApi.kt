@@ -55,7 +55,7 @@ object RenderApi {
                             append("\n\n").append(saved.size).append(" vertical Shorts saved:")
                             saved.forEach { append("\n").append(it) }
                         } else {
-                            append("\\nShorts were not available for this project.")
+                            append("\nShorts were not available for this project.")
                         }
                     }
                 }
