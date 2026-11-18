@@ -44,4 +44,6 @@ The response returns a `job_id`. Poll `GET /v1/renders/{job_id}` until status is
 - This is an early single-process prototype. Job state is held in memory and is lost if the service restarts.
 - Use HTTPS and a private network or trusted hosting environment before connecting a public mobile app.
 - Set a unique, high-entropy API token. Do not commit it to Git.
-- The current renderer creates a visual demo from title, subtitle and chart data. Voice-over, research, stock footage, full scene authoring and production-grade queueing are later milestones.
+- The renderer supports up to 15 minutes per job and can generate an English neural voice-over from a supplied script using the Edge TTS service. Narration requires outbound internet access and may be unavailable if that external service changes or blocks requests.
+- Script duration is estimated automatically when the app sends its default short duration. Explicit duration values are accepted up to 900 seconds.
+- This is still an early single-process prototype: no built-in research, original scriptwriting, stock footage, persistent queue/storage, user accounts, quotas, or production-grade job recovery.
