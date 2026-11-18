@@ -61,6 +61,15 @@ class RenderApiTests(unittest.TestCase):
         self.assertEqual(len(scenes), 20)
         self.assertIn("Sentence number 60", scenes[-1]["title"] + scenes[-1]["subtitle"])
 
+    def test_long_script_creates_four_ordered_shorts(self):
+        from renderer.api import split_script_for_shorts
+        script = " ".join([f"Point {i} explains the financial pressure." for i in range(1, 13)])
+        shorts = split_script_for_shorts(script, 4)
+        self.assertEqual(len(shorts), 4)
+        self.assertIn("Point 1", shorts[0])
+        self.assertIn("Point 12", shorts[-1])
+        self.assertEqual(" ".join(shorts).split(), script.split())
+
     def test_script_is_split_into_visual_scenes(self):
         from renderer.api import script_to_scenes
         scenes = script_to_scenes(
