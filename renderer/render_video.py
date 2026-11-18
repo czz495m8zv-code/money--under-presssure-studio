@@ -229,7 +229,7 @@ async def create_narration(text, voice, output_path):
     neural_path = output_path.with_suffix(".mp3")
     try:
         communicate = edge_tts.Communicate(text=text, voice=voice)
-        await communicate.save(str(neural_path))
+        await asyncio.wait_for(communicate.save(str(neural_path)), timeout=20)
         if neural_path.is_file() and neural_path.stat().st_size > 1024:
             print("Narration generated with neural voice.")
             return neural_path
