@@ -25,7 +25,7 @@ object RenderApi {
         onStatus("Sending project to renderer…")
         val jobId = withContext(Dispatchers.IO) { createJob(baseUrl, token, project) }
         onStatus("Render queued…")
-        repeat(180) {
+        repeat(1800) {
             delay(2000)
             val status = withContext(Dispatchers.IO) { getStatus(baseUrl, token, jobId) }
             onStatus("Renderer: $status")
