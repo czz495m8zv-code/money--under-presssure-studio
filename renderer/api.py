@@ -26,6 +26,13 @@ class ChartPoint(BaseModel):
     value: float = Field(ge=0, le=100000)
 
 
+class Scene(BaseModel):
+    title: str = Field(min_length=1, max_length=100)
+    subtitle: str = Field(default="", max_length=180)
+    chart: list[ChartPoint] = Field(default_factory=list, max_length=12)
+    scenes: list[Scene] = Field(default_factory=list, max_length=20)
+
+
 class RenderRequest(BaseModel):
     title: str = Field(min_length=1, max_length=100)
     subtitle: str = Field(default="", max_length=180)
