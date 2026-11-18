@@ -28,7 +28,94 @@ def ease_out(value):
     return 1.0 - (1.0 - value) ** 3
 
 
+def render_vertical_frame(config, frame_index):
+    width, height = 720, 1280
+    fps = int(config.get("fps", 30))
+    duration = float(config.get("duration_seconds", 30))
+    t = frame_index / fps
+    scenes = config.get("scenes", [])
+    scene_duration = duration / max(1, len(scenes))
+    scene_index = min(len(scenes) - 1, int(t / scene_duration)) if scenes else 0
+    scene = scenes[scene_index] if scenes else config
+    local_t = max(0.0, t - scene_index * scene_duration)
+    progress = min(1.0, local_t / scene_duration)
+
+    y = np.linspace(0, 1, height, dtype=np.float32)[:, None, None]
+    top = np.array([7, 13, 29], dtype=np.float32)[None, None, :]
+    bottom = np.array([15, 25, 53], dtype=np.float32)[None, None, :]
+    gradient = np.broadcast_to(top * (1 - y) + bottom * y, (height, width, 3)).copy()
+    image = Image.fromarray(gradient.astype(np.uint8), "RGB")
+    draw = ImageDraw.Draw(image, "RGBA")
+    pulse = 0.5 + 0.5 * math.sin(t * 0.8)
+    draw.ellipse((360, -160, 850, 330), fill=(34, 211, 238, int(20 + pulse * 18)))
+    draw.ellipse((-260, 820, 280, 1380), fill=(139, 92, 246, 30))
+    for x in range(0, width, 60):
+        draw.line((x, 0, x, height), fill=(100, 160, 210, 12), width=1)
+    for yy in range(0, height, 60):
+        draw.line((0, yy, width, yy), fill=(100, 160, 210, 12), width=1)
+
+    brand_font = load_font(18, True)
+    title_font = load_font(48, True)
+    subtitle_font = load_font(27)
+    label_font = load_font(17, True)
+    number_font = load_font(25, True)
+    channel = str(config.get("channel", "MONEY UNDER PRESSURE")).upper()
+    title = str(scene.get("title", config.get("title", "MONEY UNDER PRESSURE"))).upper()
+    subtitle = str(scene.get("subtitle", config.get("subtitle", "")))
+    draw.rounded_rectangle((44, 54, 56, 84), radius=5, fill=(53, 215, 242, 255))
+    draw.text((72, 55), channel, font=brand_font, fill=(224, 237, 255, 245))
+    draw.text((44, 160), "THE MONEY STORY", font=label_font, fill=(53, 215, 242, 255))
+
+    def wrapped(text, font, max_width):
+        words = text.split()
+        lines, line = [], ""
+        for word in words:
+            candidate = (line + " " + word).strip()
+            if draw.textbbox((0, 0), candidate, font=font)[2] <= max_width:
+                line = candidate
+            else:
+                if line:
+                    lines.append(line)
+                line = word
+        if line:
+            lines.append(line)
+        return lines[:5]
+
+    title_lines = wrapped(title, title_font, 625)
+    title_y = 250 + int((1 - ease_out(local_t / 0.8)) * 35)
+    for line in title_lines:
+        draw.text((44, title_y), line, font=title_font, fill=(245, 249, 255, int(255 * ease_out(local_t / 0.8))))
+        title_y += 62
+    subtitle_y = title_y + 24
+    for line in wrapped(subtitle, subtitle_font, 620):
+        draw.text((48, subtitle_y), line, font=subtitle_font, fill=(174, 193, 220, int(235 * ease_out((local_t - 0.2) / 0.8))))
+        subtitle_y += 39
+
+    panel_top = 790
+    draw.rounded_rectangle((36, panel_top, 684, 1160), radius=28, fill=(12, 24, 44, 230), outline=(77, 116, 160, 110), width=2)
+    draw.text((66, panel_top + 34), "FOLLOW THE NUMBERS", font=label_font, fill=(145, 169, 202, 255))
+    chart = scene.get("chart", config.get("chart", []))
+    if chart:
+        values = [float(item.get("value", 0)) for item in chart[:4]]
+        labels = [str(item.get("label", ""))[:12] for item in chart[:4]]
+    else:
+        values, labels = [35, 58, 76, 92], ["COST", "DEBT", "PRICE", "PRESSURE"]
+    max_value = max(values) or 1
+    base_y, chart_h = 1080, 190
+    bar_w, gap = 105, 34
+    for i, value in enumerate(values):
+        local = max(0.0, min(1.0, progress * len(values) - i + 0.15))
+        bar_h = chart_h * value / max_value * ease_out(local)
+        x0 = 68 + i * (bar_w + gap)
+        draw.rounded_rectangle((x0, base_y - bar_h, x0 + bar_w, base_y), radius=10, fill=(42, 190, 226, 225))
+        draw.text((x0, base_y + 18), labels[i], font=label_font, fill=(160, 180, 207, 255))
+    draw.text((44, 1190), "MONEY UNDER PRESSURE  •  FOLLOW FOR MORE", font=label_font, fill=(53, 215, 242, 230))
+    return np.asarray(image, dtype=np.uint8)
+
+
 def render_frame(config, frame_index):
+    if config.get("vertical", False):
+        return render_vertical_frame(config, frame_index)
     width = int(config.get("width", 1280))
     height = int(config.get("height", 720))
     fps = int(config.get("fps", 30))
