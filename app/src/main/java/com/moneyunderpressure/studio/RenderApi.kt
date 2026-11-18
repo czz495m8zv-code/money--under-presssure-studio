@@ -55,6 +55,7 @@ object RenderApi {
             .put("duration_seconds", 12)
             .put("fps", 30)
             .put("chart", org.json.JSONArray())
+            .put("script", project.script.ifBlank { project.topic })
         val conn = connection("$base/v1/renders", token)
         conn.requestMethod = "POST"
         conn.doOutput = true
