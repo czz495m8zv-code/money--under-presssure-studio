@@ -27,12 +27,37 @@ object RenderApi {
         onStatus("Render queued…")
         repeat(1800) {
             delay(2000)
-            val status = withContext(Dispatchers.IO) { getStatus(baseUrl, token, jobId) }
-            onStatus("Renderer: $status")
+            val statusData = withContext(Dispatchers.IO) { getStatus(baseUrl, token, jobId) }
+            val status = statusData.optString("status", "unknown")
+            onStatus(when (status) {
+                "creating_shorts" -> "Long video finished. Creating four vertical Shorts…"
+                "rendering" -> "Rendering long video…"
+                else -> "Renderer: $status"
+            })
             when (status) {
                 "completed" -> {
-                    onStatus("Downloading finished MP4…")
-                    return withContext(Dispatchers.IO) { download(context, baseUrl, token, jobId, project.title) }
+                    onStatus("Downloading long video…")
+                    val longPath = withContext(Dispatchers.IO) {
+                        download(context, baseUrl, token, jobId, project.title)
+                    }
+                    val shorts = statusData.optJSONArray("shorts")
+                    val shortCount = shorts?.length() ?: 0
+                    val saved = mutableListOf<String>()
+                    for (index in 1..shortCount) {
+                        onStatus("Downloading vertical Short $index of $shortCount…")
+                        saved.add(withContext(Dispatchers.IO) {
+                            download(context, baseUrl, token, jobId, project.title, index)
+                        })
+                    }
+                    return buildString {
+                        append("Long video: ").append(longPath)
+                        if (saved.isNotEmpty()) {
+                            append("\\n\\n").append(saved.size).append(" vertical Shorts saved:")
+                            saved.forEach { append("\\n").append(it) }
+                        } else {
+                            append("\\nShorts were not available for this project.")
+                        }
+                    }
                 }
                 "failed" -> throw IllegalStateException("The render server reported a failed job.")
             }
@@ -69,18 +94,23 @@ object RenderApi {
         return JSONObject(response).getString("job_id")
     }
 
-    private fun getStatus(base: String, token: String, jobId: String): String {
+    private fun getStatus(base: String, token: String, jobId: String): JSONObject {
         val conn = connection("$base/v1/renders/$jobId", token)
         val code = conn.responseCode
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val response = stream.bufferedReader().use { it.readText() }
         conn.disconnect()
         if (code !in 200..299) throw IllegalStateException("Status check failed ($code): $response")
-        return JSONObject(response).optString("status", "unknown")
+        return JSONObject(response)
     }
 
-    private fun download(context: Context, base: String, token: String, jobId: String, title: String): String {
-        val conn = connection("$base/v1/renders/$jobId/download", token)
+    private fun download(
+        context: Context, base: String, token: String, jobId: String, title: String,
+        shortIndex: Int? = null
+    ): String {
+        val endpoint = if (shortIndex == null) "$base/v1/renders/$jobId/download"
+            else "$base/v1/renders/$jobId/shorts/$shortIndex/download"
+        val conn = connection(endpoint, token)
         val code = conn.responseCode
         if (code !in 200..299) {
             val error = conn.errorStream?.bufferedReader()?.use { it.readText() } ?: "Download failed"
@@ -89,7 +119,8 @@ object RenderApi {
         }
         val safeName = title.replace(Regex("[^A-Za-z0-9_-]"), "_").take(48)
         val stamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val fileName = "MUP_" + safeName + "_" + stamp + ".mp4"
+        val variant = shortIndex?.let { "_SHORT_" + it.toString().padStart(2, '0') } ?: "_LONG"
+        val fileName = "MUP_" + safeName + variant + "_" + stamp + ".mp4"
         val resolver = context.contentResolver
         val values = ContentValues().apply {
             put(MediaStore.Video.Media.DISPLAY_NAME, fileName)
