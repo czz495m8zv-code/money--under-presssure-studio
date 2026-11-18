@@ -2,16 +2,37 @@
   "title": "THE COST OF LIVING",
   "subtitle": "Why your money feels like it buys less",
   "channel": "MONEY UNDER PRESSURE",
-  "duration_seconds": 12,
+  "duration_seconds": 18,
   "fps": 30,
   "width": 1280,
   "height": 720,
-  "chart": [
-    {"label": "2019", "value": 42},
-    {"label": "2020", "value": 48},
-    {"label": "2021", "value": 56},
-    {"label": "2022", "value": 69},
-    {"label": "2023", "value": 78},
-    {"label": "2024", "value": 91}
+  "scenes": [
+    {
+      "title": "THE COST OF LIVING",
+      "subtitle": "Why the same salary buys less every year",
+      "chart": [
+        {"label": "2019", "value": 42},
+        {"label": "2020", "value": 48},
+        {"label": "2021", "value": 56}
+      ]
+    },
+    {
+      "title": "PRICES MOVE UP",
+      "subtitle": "Everyday essentials take a larger share",
+      "chart": [
+        {"label": "Food", "value": 58},
+        {"label": "Rent", "value": 76},
+        {"label": "Energy", "value": 91}
+      ]
+    },
+    {
+      "title": "YOUR MONEY'S REAL VALUE",
+      "subtitle": "The pressure is visible when we follow the numbers",
+      "chart": [
+        {"label": "Income", "value": 48},
+        {"label": "Costs", "value": 91},
+        {"label": "Gap", "value": 43}
+      ]
+    }
   ]
 }
