@@ -1,0 +1,17 @@
+{
+  "title": "THE COST OF LIVING",
+  "subtitle": "Why your money feels like it buys less",
+  "channel": "MONEY UNDER PRESSURE",
+  "duration_seconds": 12,
+  "fps": 30,
+  "width": 1280,
+  "height": 720,
+  "chart": [
+    {"label": "2019", "value": 42},
+    {"label": "2020", "value": 48},
+    {"label": "2021", "value": 56},
+    {"label": "2022", "value": 69},
+    {"label": "2023", "value": 78},
+    {"label": "2024", "value": 91}
+  ]
+}
