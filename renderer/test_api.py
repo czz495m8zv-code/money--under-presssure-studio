@@ -54,6 +54,16 @@ class RenderApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json()["status"], "queued")
 
+    def test_script_is_split_into_visual_scenes(self):
+        from renderer.api import script_to_scenes
+        scenes = script_to_scenes(
+            "Inflation raises prices. Families feel the pressure. "
+            "Budgets become harder to manage."
+        )
+        self.assertEqual(len(scenes), 3)
+        self.assertIn("Inflation", scenes[0]["title"])
+        self.assertIn("Families", scenes[1]["title"])
+
     def test_rejects_invalid_duration(self):
         response = self.client.post(
             "/v1/renders",
