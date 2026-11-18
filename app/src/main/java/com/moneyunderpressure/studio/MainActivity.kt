@@ -50,6 +50,7 @@ fun StudioApp() {
     val context = LocalContext.current
     var title by remember { mutableStateOf("") }
     var topic by remember { mutableStateOf("") }
+    var script by remember { mutableStateOf("") }
     var selected by remember { mutableStateOf("Dashboard") }
     var notice by remember { mutableStateOf("Projects are saved on this phone.") }
     var serverUrl by remember { mutableStateOf(StudioSettings.baseUrl(context)) }
@@ -135,6 +136,15 @@ fun StudioApp() {
                                 StudioField(title, { title = it }, "e.g. Why Everyone Is in Debt")
                                 Text("VIDEO IDEA / TOPIC", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 StudioField(topic, { topic = it }, "Describe the story you want to tell")
+                                Text("VIDEO SCRIPT (OPTIONAL)", color = Muted, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                OutlinedTextField(
+                                    value = script,
+                                    onValueChange = { script = it },
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 120.dp),
+                                    placeholder = { Text("Paste your narration script. The renderer will split it into visual scenes.") },
+                                    minLines = 4,
+                                    maxLines = 8
+                                )
                                 Button(
                                     onClick = {
                                         if (title.isBlank() || topic.isBlank()) {
@@ -144,13 +154,15 @@ fun StudioApp() {
                                                 id = System.currentTimeMillis(),
                                                 title = title.trim(),
                                                 topic = topic.trim(),
-                                                createdAt = System.currentTimeMillis()
+                                                createdAt = System.currentTimeMillis(),
+                                                script = script.trim()
                                             )
                                             projects.add(0, project)
                                             ProjectStore.save(context, projects)
                                             notice = "Project saved on this phone."
                                             title = ""
                                             topic = ""
+                                            script = ""
                                             selected = "Projects"
                                         }
                                     },
