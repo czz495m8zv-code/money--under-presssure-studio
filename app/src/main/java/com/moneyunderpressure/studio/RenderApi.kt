@@ -75,7 +75,7 @@ object RenderApi {
     private fun createJob(base: String, token: String, project: StudioProject): String {
         val body = JSONObject()
             .put("title", project.title)
-            .put("subtitle", project.topic)
+            .put("subtitle", project.topic.trim().let { idea -> if (idea.length <= 180) idea else idea.take(177).trimEnd() + "..." })
             .put("channel", "MONEY UNDER PRESSURE")
             .put("duration_seconds", 12)
             .put("fps", 30)
