@@ -37,6 +37,23 @@ class RenderApiTests(unittest.TestCase):
         self.assertIn("job_id", response.json())
         self.assertEqual(response.json()["status"], "queued")
 
+    def test_accepts_multi_scene_project(self):
+        response = self.client.post(
+            "/v1/renders",
+            headers=self.headers,
+            json={
+                "title": "Three scene story",
+                "duration_seconds": 18,
+                "scenes": [
+                    {"title": "Opening", "subtitle": "The setup"},
+                    {"title": "The pressure", "subtitle": "The numbers"},
+                    {"title": "The takeaway", "subtitle": "What it means"}
+                ]
+            }
+        )
+        self.assertEqual(response.status_code, 202)
+        self.assertEqual(response.json()["status"], "queued")
+
     def test_rejects_invalid_duration(self):
         response = self.client.post(
             "/v1/renders",
