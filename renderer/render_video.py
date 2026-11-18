@@ -147,7 +147,7 @@ def media_duration(path, ffmpeg_exe):
         capture_output=True, text=True, check=False
     )
     import re
-    match = re.search(r"Duration: (\\d+):(\\d+):(\\d+(?:\\.\\d+)?)", probe.stderr)
+    match = re.search(r"Duration: (\d+):(\d+):(\d+(?:\\.\d+)?)", probe.stderr)
     if not match:
         raise RuntimeError("Could not determine generated narration duration.")
     hours, minutes, seconds = match.groups()
