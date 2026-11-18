@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: money-under-pressure-renderer
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: STUDIO_API_TOKEN
+        generateValue: true
