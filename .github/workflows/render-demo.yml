@@ -1,0 +1,29 @@
+name: Render Demo Video
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: renderer/requirements.txt
+      - name: Install renderer dependencies
+        run: python -m pip install -r renderer/requirements.txt
+      - name: Render sample video
+        run: python renderer/render_video.py --project renderer/sample_project.json --output output/money-under-pressure-demo.mp4
+      - name: Upload MP4
+        uses: actions/upload-artifact@v4
+        with:
+          name: money-under-pressure-demo-video
+          path: output/money-under-pressure-demo.mp4
