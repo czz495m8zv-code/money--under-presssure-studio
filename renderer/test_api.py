@@ -54,6 +54,13 @@ class RenderApiTests(unittest.TestCase):
         self.assertEqual(response.status_code, 202)
         self.assertEqual(response.json()["status"], "queued")
 
+    def test_long_script_is_grouped_across_visual_scenes(self):
+        from renderer.api import script_to_scenes
+        script = " ".join([f"Sentence number {i} explains an important financial idea." for i in range(1, 61)])
+        scenes = script_to_scenes(script)
+        self.assertEqual(len(scenes), 20)
+        self.assertIn("Sentence number 60", scenes[-1]["title"] + scenes[-1]["subtitle"])
+
     def test_script_is_split_into_visual_scenes(self):
         from renderer.api import script_to_scenes
         scenes = script_to_scenes(
