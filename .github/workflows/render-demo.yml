@@ -27,8 +27,14 @@ jobs:
         run: python -m pip install -r renderer/requirements.txt
       - name: Render sample video
         run: python renderer/render_video.py --project renderer/sample_project.json --output output/money-under-pressure-demo.mp4
-      - name: Upload MP4
+      - name: Test narration, FFmpeg muxing and MP4 output
+        run: |
+          python renderer/render_video.py --project renderer/narration_test_project.json --output output/narration-integration-test.mp4
+          test -s output/narration-integration-test.mp4
+      - name: Upload MP4 test outputs
         uses: actions/upload-artifact@v4
         with:
-          name: money-under-pressure-demo-video
-          path: output/money-under-pressure-demo.mp4
+          name: money-under-pressure-render-test-videos
+          path: |
+            output/money-under-pressure-demo.mp4
+            output/narration-integration-test.mp4
