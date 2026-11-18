@@ -70,6 +70,13 @@ class RenderApiTests(unittest.TestCase):
         self.assertIn("Point 12", shorts[-1])
         self.assertEqual(" ".join(shorts).split(), script.split())
 
+    def test_each_short_excerpt_is_limited_to_330_words(self):
+        from renderer.api import split_script_for_shorts
+        sentence = " ".join(["money"] * 100) + "."
+        shorts = split_script_for_shorts(" ".join([sentence] * 20), 4)
+        self.assertEqual(len(shorts), 4)
+        self.assertTrue(all(len(short.split()) <= 330 for short in shorts))
+
     def test_vertical_short_frame_is_9_by_16(self):
         from renderer.render_video import render_vertical_frame
         frame = render_vertical_frame({
