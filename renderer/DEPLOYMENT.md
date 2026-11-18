@@ -17,4 +17,6 @@ The app's rendering API is packaged as a Docker web service. This repository inc
 - The generated MP4 is on ephemeral service storage. Download it before the service restarts.
 - This is a prototype for testing, not yet a production video platform. A persistent job queue, durable object storage, user accounts, quotas and stronger operational monitoring are still required.
 
-Do not put the API token in a public repository, screenshot or shared message. The Android app has not yet been connected to a deployed endpoint; the next mobile milestone is adding secure server settings and render-job controls.
+Do not put the API token in a public repository, screenshot or shared message. The Android app already includes encrypted token storage, server URL settings, render-job polling and MP4 download. After deployment, enter the HTTPS service URL and generated token in the app's Settings screen. The current renderer can produce up to 15 minutes of video and optionally synthesizes English narration through the external Edge TTS service; this requires outbound internet access.
+
+**Long-form caution:** the free hosting tier is suitable only for a small proof of concept. A 8–15 minute render can exceed free CPU, memory, request or service-lifetime limits. Do not rely on a free instance for dependable long-form production. Before public or regular use, move to a suitable persistent worker/server and object storage, and implement a durable queue.
