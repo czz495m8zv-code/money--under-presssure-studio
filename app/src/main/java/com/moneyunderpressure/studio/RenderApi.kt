@@ -52,8 +52,8 @@ object RenderApi {
                     return buildString {
                         append("Long video: ").append(longPath)
                         if (saved.isNotEmpty()) {
-                            append("\\n\\n").append(saved.size).append(" vertical Shorts saved:")
-                            saved.forEach { append("\\n").append(it) }
+                            append("\n\n").append(saved.size).append(" vertical Shorts saved:")
+                            saved.forEach { append("\n").append(it) }
                         } else {
                             append("\\nShorts were not available for this project.")
                         }
