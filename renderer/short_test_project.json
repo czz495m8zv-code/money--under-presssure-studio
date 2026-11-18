@@ -1,0 +1,17 @@
+{
+  "title": "Why Prices Keep Rising",
+  "subtitle": "A short financial story",
+  "channel": "MONEY UNDER PRESSURE",
+  "duration_seconds": 5,
+  "fps": 24,
+  "width": 720,
+  "height": 1280,
+  "vertical": true,
+  "narration_enabled": true,
+  "voice": "en-US-AriaNeural",
+  "script": "Prices can rise faster than paychecks. That leaves families with less room in every monthly budget.",
+  "scenes": [
+    {"title": "PRICES KEEP RISING", "subtitle": "Paychecks do not always keep up.", "chart": []},
+    {"title": "LESS ROOM TO BREATHE", "subtitle": "Every monthly bill adds pressure.", "chart": []}
+  ]
+}
