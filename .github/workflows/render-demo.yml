@@ -1,6 +1,11 @@
 name: Render Demo Video
 
 on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "renderer/**"
+      - ".github/workflows/render-demo.yml"
   workflow_dispatch:
 
 permissions:
