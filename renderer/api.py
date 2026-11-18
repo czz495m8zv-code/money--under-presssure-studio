@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import secrets
 import subprocess
 import sys
@@ -40,7 +41,27 @@ class RenderRequest(BaseModel):
     fps: int = Field(default=30, ge=24, le=30)
     chart: list[ChartPoint] = Field(default_factory=list, max_length=12)
     scenes: list[Scene] = Field(default_factory=list, max_length=20)
+    script: str = Field(default="", max_length=12000)
 
+
+
+def script_to_scenes(script: str) -> list[dict[str, Any]]:
+    # Turn script paragraphs/sentences into readable visual beats.
+    if not script.strip():
+        return []
+    beats = [part.strip() for part in re.split(r"(?<=[.!?])\s+|\n+", script) if part.strip()]
+    beats = beats[:20]
+    scenes = []
+    for index, beat in enumerate(beats):
+        words = beat.split()
+        title = " ".join(words[:7]).strip(" .,!?:;")
+        subtitle = " ".join(words[7:24]).strip()
+        scenes.append({
+            "title": title[:100] or f"KEY POINT {index + 1}",
+            "subtitle": subtitle[:180],
+            "chart": []
+        })
+    return scenes
 
 def require_token(authorization: str | None):
     if not API_TOKEN:
@@ -82,6 +103,8 @@ def create_render(request: RenderRequest, background_tasks: BackgroundTasks,
     require_token(authorization)
     job_id = uuid.uuid4().hex
     payload = request.model_dump()
+    if not payload["scenes"] and payload["script"].strip():
+        payload["scenes"] = script_to_scenes(payload["script"])
     with lock:
         jobs[job_id] = {"id": job_id, "status": "queued"}
     background_tasks.add_task(render_job, job_id, payload)
