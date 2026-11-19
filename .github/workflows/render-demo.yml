@@ -24,6 +24,35 @@ jobs:
           python-version: "3.11"
           cache: pip
           cache-dependency-path: renderer/requirements.txt
+      - name: Check deployed Render backend health
+        continue-on-error: true
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          url = "https://money-under-pressure-renderer.onrender.com/health"
+          last_error = None
+          for attempt in range(1, 7):
+              try:
+                  request = urllib.request.Request(url, headers={"User-Agent": "MoneyUnderPressure-CI"})
+                  with urllib.request.urlopen(request, timeout=20) as response:
+                      payload = json.load(response)
+                      if response.status != 200 or payload.get("status") != "ok":
+                          raise RuntimeError(f"Unexpected health response: {payload}")
+                      if payload.get("service") != "money-under-pressure-renderer":
+                          raise RuntimeError(f"Unexpected service identity: {payload}")
+                      print(f"Live Render backend health verified: {payload}")
+                      break
+              except Exception as exc:
+                  last_error = exc
+                  print(f"Health attempt {attempt}/6 failed: {type(exc).__name__}: {exc}")
+                  if attempt < 6:
+                      time.sleep(10)
+          else:
+              raise SystemExit(f"Live Render backend health could not be verified: {last_error}")
+          PY
       - name: Install offline narration fallback
         run: |
           sudo apt-get update
