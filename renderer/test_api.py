@@ -73,6 +73,14 @@ class RenderApiTests(unittest.TestCase):
         self.assertIn("Point 12", shorts[-1])
         self.assertEqual(" ".join(shorts).split(), script.split())
 
+    def test_short_duration_tracks_narration_length_and_stays_under_three_minutes(self):
+        from renderer.api import estimate_short_duration
+        short_excerpt = "Prices rise and families adjust."
+        long_excerpt = " ".join(["money"] * 300)
+        self.assertLess(estimate_short_duration(short_excerpt), 30)
+        self.assertGreater(estimate_short_duration(long_excerpt), 100)
+        self.assertLessEqual(estimate_short_duration(long_excerpt), 180)
+
     def test_each_short_excerpt_is_limited_to_330_words(self):
         from renderer.api import split_script_for_shorts
         sentence = " ".join(["money"] * 100) + "."

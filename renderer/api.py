@@ -102,6 +102,12 @@ def split_script_for_shorts(script: str, count: int = 4) -> list[str]:
     return chunks
 
 
+def estimate_short_duration(script: str) -> int:
+    """Choose a visual duration close to the spoken excerpt, capped at YouTube's 3-minute Short limit."""
+    word_count = len(script.split())
+    return min(180, max(5, int(word_count / 2.35) + 3))
+
+
 def run_renderer(project_path: Path, output_path: Path, timeout: int):
     command = [
         sys.executable, str(ROOT / "renderer" / "render_video.py"),
@@ -140,7 +146,7 @@ def render_job(job_id: str, payload: dict[str, Any]):
                     "title": short_title[:100],
                     "subtitle": "A key moment from the full Money Under Pressure story",
                     "channel": payload.get("channel", "MONEY UNDER PRESSURE"),
-                    "duration_seconds": 30,
+                    "duration_seconds": estimate_short_duration(short_script),
                     "fps": 30,
                     "width": 720,
                     "height": 1280,

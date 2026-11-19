@@ -14,7 +14,7 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 12
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -76,6 +76,11 @@ jobs:
               raise SystemExit("Short output is not 720x1280 portrait video.")
           print("Vertical Short is 720x1280 with decodable narration audio.")
           PY
+      - name: Render all four Shorts through the API and verify MP4s and download routes
+        env:
+          MUP_FORCE_OFFLINE_TTS: "1"
+          STUDIO_API_TOKEN: "ci-four-shorts-token"
+        run: timeout 480s python renderer/integration_test_four_shorts.py
       - name: Upload MP4 test outputs
         uses: actions/upload-artifact@v4
         with:
@@ -84,3 +89,4 @@ jobs:
             output/money-under-pressure-demo.mp4
             output/narration-integration-test.mp4
             output/short-integration-test.mp4
+            output/four-shorts-integration/*.mp4
