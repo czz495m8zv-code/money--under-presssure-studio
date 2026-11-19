@@ -12,7 +12,7 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("STUDIO_API_TOKEN", "ci-four-shorts-token")
 
 import imageio_ffmpeg
-from fastapi.responses import FileResponse
+from fastapi.testclient import TestClient
 from renderer import api
 
 
@@ -77,7 +77,6 @@ def main() -> None:
         if old_file.is_file():
             old_file.unlink()
 
-    api.jobs[JOB_ID] = {"id": JOB_ID, "status": "queued"}
     payload = {
         "title": "Four Shorts Integration Test",
         "subtitle": "A real API-path render test",
@@ -87,11 +86,19 @@ def main() -> None:
         "narration_enabled": True,
         "voice": "en-US-AriaNeural",
         "script": SCRIPT,
-        "scenes": api.script_to_scenes(SCRIPT),
     }
 
-    api.render_job(JOB_ID, payload)
-    job = api.jobs[JOB_ID]
+    client = TestClient(api.app)
+    headers = {"Authorization": f"Bearer {TOKEN}"}
+    created = client.post("/v1/renders", json=payload, headers=headers)
+    if created.status_code != 202:
+        raise AssertionError(f"Render API did not accept the project: {created.status_code} {created.text}")
+    job_id = created.json()["job_id"]
+
+    status_response = client.get(f"/v1/renders/{job_id}", headers=headers)
+    if status_response.status_code != 200:
+        raise AssertionError(f"Could not retrieve completed render status: {status_response.text}")
+    job = status_response.json()
     if job.get("status") != "completed":
         raise AssertionError(f"Long render failed: {job.get('error', job)}")
     if job.get("shorts_error"):
@@ -101,28 +108,29 @@ def main() -> None:
     if len(shorts) != 4 or [item.get("index") for item in shorts] != [1, 2, 3, 4]:
         raise AssertionError(f"Expected four ordered Shorts, got: {shorts}")
 
-    auth = f"Bearer {TOKEN}"
-    long_path = OUTPUT_DIR / f"{JOB_ID}.mp4"
+    long_path = OUTPUT_DIR / f"{job_id}.mp4"
     long_duration = verify_mp4(long_path)
-    long_response = api.download_render(JOB_ID, authorization=auth)
-    if not isinstance(long_response, FileResponse) or not Path(long_response.path).is_file():
-        raise AssertionError("Authenticated long-video download route did not return the rendered MP4.")
+    long_response = client.get(f"/v1/renders/{job_id}/download", headers=headers)
+    if long_response.status_code != 200 or long_response.content != long_path.read_bytes():
+        raise AssertionError("Authenticated long-video HTTP download did not match the rendered MP4.")
     print(f"Verified narrated long-video API output: {long_duration:.1f}s")
 
     for item in shorts:
         index = item["index"]
         path = OUTPUT_DIR / item["filename"]
         duration = verify_mp4(path, portrait=True)
-        response = api.download_short(JOB_ID, index, authorization=auth)
-        if not isinstance(response, FileResponse) or Path(response.path).read_bytes() != path.read_bytes():
-            raise AssertionError(f"Authenticated download route failed for Short {index}.")
+        response = client.get(
+            f"/v1/renders/{job_id}/shorts/{index}/download",
+            headers=headers,
+        )
+        if response.status_code != 200 or response.content != path.read_bytes():
+            raise AssertionError(f"Authenticated HTTP download failed for Short {index}.")
         print(
             f"Verified Short {index}/4: {duration:.1f}s, 720x1280, "
-            "video and narration audio decode, authenticated download route."
+            "video and narration audio decode, authenticated HTTP download."
         )
 
-    api.jobs.pop(JOB_ID, None)
-    print("All four real narrated Shorts passed end-to-end API render and download checks.")
+    print("All four real narrated Shorts passed end-to-end HTTP API render and download checks.")
 
 
 if __name__ == "__main__":
