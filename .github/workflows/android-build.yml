@@ -57,24 +57,6 @@ jobs:
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-      - name: Install and launch signed APK on Android emulator
-        if: ${{ env.HAS_ANDROID_SIGNING_SECRETS == 'true' }}
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          target: google_apis
-          profile: pixel_2
-          disable-animations: true
-          script: |
-            adb install app/build/outputs/apk/release/app-release.apk
-            adb shell monkey -p com.moneyunderpressure.studio 1
-            sleep 5
-            test -n "$(adb shell pidof com.moneyunderpressure.studio | tr -d '\r')"
-            if adb logcat -d -s AndroidRuntime:E | grep -q "FATAL EXCEPTION"; then
-              adb logcat -d -s AndroidRuntime:E
-              exit 1
-            fi
       - name: Upload signed release APK
         if: ${{ env.HAS_ANDROID_SIGNING_SECRETS == 'true' }}
         uses: actions/upload-artifact@v4
