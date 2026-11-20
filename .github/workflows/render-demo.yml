@@ -25,7 +25,6 @@ jobs:
           cache: pip
           cache-dependency-path: renderer/requirements.txt
       - name: Check deployed Render backend health
-        continue-on-error: true
         run: |
           python - <<'PY'
           import json
