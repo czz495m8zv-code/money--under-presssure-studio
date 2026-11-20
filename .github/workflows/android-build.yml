@@ -23,9 +23,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       HAS_ANDROID_SIGNING_SECRETS: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+    outputs:
+      signing_configured: ${{ steps.signing.outputs.configured }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Report signing configuration
+        id: signing
+        run: echo "configured=${HAS_ANDROID_SIGNING_SECRETS}" >> "$GITHUB_OUTPUT"
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -68,3 +73,53 @@ jobs:
         with:
           name: money-under-pressure-studio-debug
           path: app/build/outputs/apk/debug/app-debug.apk
+
+  smoke:
+    needs: build
+    if: ${{ needs.build.outputs.signing_configured == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download signed release APK
+        uses: actions/download-artifact@v4
+        with:
+          name: money-under-pressure-studio-release
+          path: release
+
+      - name: Install and launch signed APK on Android emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          system-image-api-level: 31
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          emulator-boot-timeout: 300
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          disable-animations: true
+          cores: 2
+          ram-size: 2048M
+          script: |
+            set -euo pipefail
+            APK="$(find release -type f -name app-release.apk | head -n 1)"
+            test -s "$APK"
+            adb logcat -c
+            adb install -r "$APK"
+            adb shell monkey -p com.moneyunderpressure.studio 1
+            PID=""
+            for attempt in $(seq 1 30); do
+              PID="$(adb shell pidof com.moneyunderpressure.studio | tr -d '\r' || true)"
+              if [ -n "$PID" ]; then
+                break
+              fi
+              sleep 2
+            done
+            test -n "$PID"
+            ACTIVITY="$(adb shell dumpsys activity activities | grep com.moneyunderpressure.studio || true)"
+            test -n "$ACTIVITY"
+            FATAL="$(adb logcat -d -s AndroidRuntime:E)"
+            if echo "$FATAL" | grep -q "FATAL EXCEPTION"; then
+              echo "$FATAL"
+              exit 1
+            fi
+            echo "Signed APK installed, app process started, and launcher activity appeared on Android API 31."
